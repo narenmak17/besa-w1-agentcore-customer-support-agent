@@ -1,39 +1,52 @@
 # Lab 1 — Building the Agent Prototype
 
-## Problem
+## The problem, in plain terms
 
-A model that can plan is not an agent. It needs tools to act, a way to run, and somewhere to live.
+You can ask an AI model a question and it'll give you a smart-sounding answer. But a model by itself can't actually *do* anything — it can't look up a real order, check a real policy, or search the web. It just talks. To get something that can act, you need to give it tools and a place to run.
 
-## If you don't solve this
+## Why this actually matters
 
-Every "AI feature" ships as a chatbot wrapper: a prompt box bolted onto a single model call, with no way to actually *do* anything — look up an order, check a policy, search the web. The business ends up with something that sounds helpful and does nothing, and the gap between "looks like a demo" and "does real work" gets rediscovered the hard way, usually after a customer asks it to do something and it just makes an answer up. The customer-facing cost is a bot that confidently can't help; the engineering cost is realizing mid-project that "add a tool" means redesigning the whole request path, not configuring a setting.
+Think about a customer support chatbot that can only chat. A customer asks "what's your return policy for my headphones?" and the bot either makes something up (bad) or says "I can't help with that, please call support" (also bad, and the whole point of building it was to avoid that call). That's the gap between a model and an agent — and it's the gap that makes a lot of "AI features" feel like a shiny toy instead of something actually useful.
 
-## How AWS solves it
+## What AWS gives you to fix this
 
-AgentCore separates "can the model reason" from "can it act" cleanly: a Strands agent gets `@tool`-decorated Python functions as its action surface, an MCP client for anything external (web search, here), and a managed Runtime that handles packaging, IAM, and scaling once deployed. The CLI (`agentcore create`) scaffolds all of this in one step instead of each piece being a separate integration project.
+Amazon Bedrock AgentCore handles this by cleanly separating two jobs: the model's job (think and decide what to do) and the agent's job (actually do it). You write small Python functions — called "tools" — that do real things, like look up a product. The agent decides when to call them. AWS also gives you a one-command way to package all this up and run it in the cloud, so you don't have to build that infrastructure yourself.
 
-## Approach
+## What I actually did
 
-1. Scaffold with the CLI (`agentcore create --framework Strands --model-provider Bedrock`) instead of hand-wiring a project.
-2. Replace the generated sample tool with real domain tools (return policy lookup, product lookup) — a `@tool`-decorated Python function is the whole interface.
-3. Pin the model explicitly (`model_id=...`) rather than trusting a default — every later lab depends on this being stable.
-4. Test locally first (`agentcore dev`) before deploying — hot-reload, fast feedback, no cloud cost yet.
-5. Deploy with one command (`agentcore deploy`) — infra (IAM, packaging, runtime config) is handled for you.
+1. Ran one command (`agentcore create`) to generate a starting project — this gives you a working agent with a sample tool already wired up, so you're not starting from a blank file.
+2. Swapped the sample tool out for two real ones: a return-policy lookup and a product-info lookup.
+3. Locked the AI model to one specific version, so it behaves the same way in every later lab.
+4. Tested it on my own machine first (`agentcore dev`) — this gives you instant feedback without paying for or waiting on the cloud.
+5. Deployed it to AWS with one command (`agentcore deploy`) — AWS handles the permissions and infrastructure setup in the background.
 
-## Analysis
+## How it fits together
 
-The real decision in this lab isn't "which tool framework" — it's accepting that a model and an agent are different things, and that the difference is exactly the part most teams skip when they're excited to ship a demo. The CLI's one-command deploy is deceptively significant: it means the IAM/packaging/runtime work that would normally be its own mini-project is handled, which removes the usual excuse for staying in "chatbot wrapper" mode because "doing it properly is too much infra work."
+*This diagram is my own, drawn to explain what this lab builds — not an official AWS diagram. Source: AWS Workshop Studio, Lab 1 ("Building the Agent Prototype").*
 
-## Key takeaway
+```mermaid
+flowchart LR
+    U[Customer asks a question] --> AG[The Agent]
+    AG --> T1[Tool: check return policy]
+    AG --> T2[Tool: look up a product]
+    AG -.also can.-> EXA[Search the web]
+    AG --> M[The AI model<br/>decides what to do]
+    AG -. one command: agentcore deploy .-> RT[Running live on AWS]
 
-A model + tools is not yet a production agent — no memory, no shared tools, no security, no quality measurement. That's the deliberate baseline every later lab adds exactly one missing piece to. If you're evaluating "is this agent ready," check it against what labs 2–6 add, not against what Lab 1 alone gives you.
+    style RT stroke:#a78bfa,stroke-width:2px
+    style M stroke:#01a88d,stroke-width:2px
+```
 
-## Tried and tested
+## The one thing worth remembering
 
-Ran all five steps myself end to end, including a real deploy. Confirmed working: `agentcore dev` for local iteration, `agentcore deploy` producing a live AgentCore Runtime endpoint invocable via `agentcore invoke`.
+An agent is not just "a model with a nice chat box." It's a model *plus* tools *plus* somewhere to run. This lab only builds that minimum — it doesn't remember past conversations, can't use another team's existing systems yet, and has no security or quality checks. That's on purpose: every lab after this one adds exactly one of those missing pieces. If someone shows you an "agent" that's really just a chatbot wrapped around one model call, now you know exactly what's missing.
 
-## References
+## What I actually tested, not just read about
 
-- Lab source: [AWS Workshop Studio — Lab 1: Building the Agent Prototype](https://catalog.us-east-1.prod.workshops.aws/workshops/c770f35f-90a9-4e02-8985-4ef912bddb77/en-US/20-lab1-agent) — full code lives here, not reproduced in this repo
-- [Amazon Bedrock AgentCore Runtime docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime.html)
-- [Strands Agents SDK](https://strandsagents.com/)
+I ran every step above myself, including a real deploy to AWS. I confirmed the local test server worked (`agentcore dev`) and that the deployed version answered correctly when I called it with `agentcore invoke`.
+
+## Want the real thing? Go here
+
+- The actual lab, with all the real code: [AWS Workshop Studio — Lab 1: Building the Agent Prototype](https://catalog.us-east-1.prod.workshops.aws/workshops/c770f35f-90a9-4e02-8985-4ef912bddb77/en-US/20-lab1-agent)
+- [Amazon Bedrock AgentCore Runtime — official docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime.html)
+- [Strands Agents SDK](https://strandsagents.com/) — the framework used to build the agent

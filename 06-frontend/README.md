@@ -1,39 +1,49 @@
 # Lab 6 — Building the Customer Interface
 
-## Problem
+## The problem, in plain terms
 
-Everything from Labs 1–5 is real, deployed, and working — and completely unreachable by an actual customer, who has neither a terminal nor a bearer token.
+Everything built in Labs 1 through 5 is real, live, and working — and a real customer can't reach any of it. Right now, using the agent requires a terminal and a special access code, which no normal customer has or wants.
 
-## If you don't solve this
+## Why this actually matters
 
-Five labs of real infrastructure — memory, shared tools, security, observability, measured quality — sit behind a CLI only the engineering team can reach. The business value never materializes because no customer can get to it; the project reads as "done" internally while delivering zero actual customer impact. This is a surprisingly common failure mode: teams invest heavily in backend agent quality and treat the interface as an afterthought, then wonder why the project doesn't show up in any customer-facing metric.
+This is a surprisingly common way for good work to go to waste: a team spends weeks building a solid agent — memory, shared tools, security, quality checks — and then never gets around to the part a customer can actually open and use. All that effort delivers zero real value until someone who isn't an engineer can click a button and start typing.
 
-## How AWS solves it
+## What AWS gives you to fix this
 
-A thin Flask server handles only what a browser can't do safely on its own — authenticating against Cognito and handing over a scoped access token. Everything else, including the actual chat traffic, goes straight from the browser to the AgentCore REST API with that token in an `Authorization: Bearer` header. The backend agent (tools, memory, Gateway, evaluation) doesn't change at all — the frontend is additive, not a rewrite.
+The fix is a small web page with a chat box. A lightweight server handles the login step (so no customer needs AWS credentials), then gets out of the way — the customer's browser talks to the agent directly after that, the same way the CLI did in earlier labs, just with a friendlier interface.
 
-## Approach
+## What I actually did
 
-1. Add a thin Flask server that authenticates against Cognito on startup, using the same `USER_PASSWORD_AUTH` flow already used from the CLI in Lab 4.
-2. Serve a single chat page with the access token and runtime ARN injected into it.
-3. Let the **browser** call the AgentCore REST API directly with an `Authorization: Bearer` header — Flask's job is just to authenticate and hand over a token, not to proxy every chat message.
-4. Test the full stack end to end through the browser: product lookup, return policy, warranty check (via Gateway), and a "do you remember me?" check against Memory.
-5. Test session reset deliberately — a new session should forget mid-conversation context but *still* recall long-term facts, which is the same distinction Lab 2/4 proved, now visible in a real UI instead of a CLI flag.
+1. Built a small web server whose only job is to log the customer in and hand their browser a temporary access pass.
+2. Built a one-page chat interface — type a message, see the agent's reply.
+3. Made sure the actual chat messages go straight from the browser to the agent, not routed back through my own server first — keeps things simple and fast.
+4. Tested it for real: asked about products, return policy, and a warranty check, all through the browser instead of a terminal.
+5. Tested session behavior on purpose: started a new chat and confirmed it forgot the current conversation but *still* remembered saved facts about me from before — the same memory-vs-session distinction from Labs 2 and 4, now visible in an actual chat window instead of a command line.
 
-## Analysis
+## How it fits together
 
-The architectural choice to let the browser call AgentCore directly (rather than proxying every message through Flask) is the part worth sitting with — it keeps the backend agent completely untouched by the UI work, which means the frontend team and the agent team can genuinely work in parallel without stepping on each other. The explicit workshop caveat about `USER_PASSWORD_AUTH` being a shortcut is also worth taking seriously rather than skimming past: it's the one place in this whole lab sequence where the "fast version" and the "production version" meaningfully diverge, and copying it wholesale into a real app would reintroduce exactly the kind of credential-handling risk Lab 4 spent its budget solving.
+*My own diagram explaining the mechanism — not an official AWS diagram. Source: AWS Workshop Studio, Lab 6 ("Building the Customer Interface").*
 
-## Key takeaway
+```mermaid
+flowchart LR
+    U[Customer's browser<br/>no AWS account needed] --> S[Small login server]
+    S -->|hands back an access pass| U
+    U -->|chat messages go straight through| AG[The agent<br/>everything from Labs 1-5]
 
-A solid backend isn't a finished product — it's finished when someone who isn't you can open a browser and use it. This lab's own auth shortcut (`USER_PASSWORD_AUTH` from the browser) is explicitly flagged by AWS as workshop-only — a real production frontend needs Cognito's Authorization Code flow with PKCE, or a backend-for-frontend that keeps tokens server-side.
+    style S stroke:#dd344c,stroke-width:2px
+    style AG stroke:#a78bfa,stroke-width:2px
+```
 
-## Tried and tested
+## The one thing worth remembering
 
-Opened the chat UI in a browser and ran through all four test prompts (products, return policy, warranty, memory recall), then deliberately started a new session to confirm short-term context reset while long-term memory facts persisted — the same behavior proven via CLI in Labs 2 and 4, now visibly working through an actual UI.
+A solid backend isn't a finished product — it's finished when someone who isn't you can open a browser and actually use it. One more thing worth knowing if you build something like this for real: the simple login method used in this workshop lab is explicitly called out by AWS as a shortcut for learning purposes only — a real production app needs a more robust login flow, not this exact setup.
 
-## References
+## What I actually tested, not just read about
 
-- Lab source: [AWS Workshop Studio — Lab 6: Building the Customer Interface](https://catalog.us-east-1.prod.workshops.aws/workshops/c770f35f-90a9-4e02-8985-4ef912bddb77/en-US/70-lab6-frontend)
-- [AgentCore Runtime — invoking via the REST API](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-invoke.html)
-- [Amazon Cognito — Authorization Code flow with PKCE](https://docs.aws.amazon.com/cognito/latest/developerguide/authorization-endpoint.html) (the production-correct auth pattern, vs. this lab's workshop shortcut)
+I opened the chat page in a real browser and tried all four test questions (products, return policy, warranty, "do you remember me?"), then deliberately started a new chat to confirm it forgot the current conversation but still recalled saved facts from before.
+
+## Want the real thing? Go here
+
+- The actual lab, with all the real code: [AWS Workshop Studio — Lab 6: Building the Customer Interface](https://catalog.us-east-1.prod.workshops.aws/workshops/c770f35f-90a9-4e02-8985-4ef912bddb77/en-US/70-lab6-frontend)
+- [AgentCore Runtime — calling it over the web, official docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-invoke.html)
+- [Amazon Cognito — the production-correct login flow](https://docs.aws.amazon.com/cognito/latest/developerguide/authorization-endpoint.html) (not the shortcut this lab uses)

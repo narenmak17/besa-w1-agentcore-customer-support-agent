@@ -1,39 +1,58 @@
 # Lab 4 — Securing and Observing in Production
 
-## Problem
+## The problem, in plain terms
 
-By default the agent's endpoint is protected by AWS IAM — a caller needs signed AWS credentials. But IAM alone can't tell one customer from another without handing out AWS credentials to each of them, and there's no way yet to see *why* a given response came out the way it did.
+By default, your agent is locked behind AWS's own credentials — so random strangers on the internet can't call it, which is good. But that's an all-or-nothing lock: it can't tell *which* customer is talking to it. And right now, if the agent gives a wrong answer, there's no way to see what actually happened inside that conversation.
 
-## If you don't solve this
+## Why this actually matters
 
-Without per-customer identity, you either hand out shared AWS credentials to every customer (a security incident waiting to happen) or you can't personalize anything, because the agent has no reliable way to know who it's actually talking to. Without observability, the failure mode is worse: an agent gives a wrong answer in production, a customer complains, and there's no trace, no log, nothing to point at except "it said something wrong" — no way to tell whether it was a bad tool call, a memory miss, or the model itself. Debugging becomes guesswork at exactly the moment it matters most: a live incident with a real customer affected.
+Without a way to identify individual customers, you're stuck choosing between handing out real AWS credentials to every customer (a genuinely bad idea) or not being able to personalize anything at all. And without visibility into what the agent actually did, when something goes wrong in front of a real customer — and eventually something will — you're left guessing. Was it the wrong tool? A memory that didn't load? The model itself? Without evidence, debugging becomes "maybe try this and see if it happens again," which is a bad place to be during a live customer complaint.
 
-## How AWS solves it
+## What AWS gives you to fix this
 
-Two separate mechanisms, deliberately not conflated: session persistence/isolation (free, built into the Runtime, scoped by session-id) versus AgentCore Memory (durable, scoped by user-id, survives new sessions and runtime recycling) — Lab 4 proves the difference with a live three-call test rather than asserting it. Separately, AgentCore Runtime has been auto-instrumenting every call with OpenTelemetry since Lab 1 — traces and logs are already there, waiting, with zero extra setup. JWT-based auth (Cognito) replaces the all-or-nothing IAM default with real per-customer identity.
+Two separate things, and the lab is careful not to blur them together. First: AgentCore Runtime has been quietly recording everything — every request, every tool call, every response — since the very first lab, with zero setup required. You just ask to see it. Second: this lab adds real login-based identity (via Amazon Cognito) so the agent can actually tell different customers apart, instead of treating every caller the same.
 
-## Approach
+## What I actually did
 
-1. Prove session continuity first: same session-id, same user → agent remembers mid-conversation for free (no Memory needed, just the live microVM).
-2. Prove session isolation next: a brand-new session-id for a brand-new user → agent knows nothing (new microVM, nothing to recall).
-3. Prove Memory bridges the two: a brand-new session-id for an *existing* user (from Lab 2) → agent still recalls their facts. Running all three back to back is what makes the distinction concrete instead of theoretical.
-4. Pull real traces and logs with zero extra setup (`agentcore traces list`, `agentcore traces get <id>`, `agentcore logs --since 1h --query "warranty"`).
-5. Add JWT-based auth (Cognito) to both the Runtime and the Gateway, replacing the free-for-all IAM-only default with per-customer identity.
+1. Proved "remembers mid-chat" works for free: same conversation, same customer, agent remembers without any special setup.
+2. Proved a brand-new conversation for a brand-new customer starts completely blank — no leftover context from anyone else.
+3. Proved memory from Lab 2 bridges the two: a brand-new conversation for an *existing* customer still recalls their facts, because that's stored separately from the live conversation.
+4. Pulled real records of what the agent actually did — which tool it called, what it said, how long each step took — using commands that needed no extra setup at all.
+5. Turned on proper login-based security (Cognito), so the agent can now tell real customers apart instead of treating every request the same.
 
-## Analysis
+## How it fits together
 
-The three-call test matters more than it looks like on paper, because the failure mode it guards against is a confident wrong assumption, not an obvious bug — a team that never runs this test can ship "memory" that's actually just session persistence and not find out until a customer complains in a second visit. On the observability side, the significant design choice is that instrumentation isn't opt-in: it's there from Lab 1, which means "add monitoring later" is never actually a true statement for an AgentCore agent, even if nobody's looked at a trace yet.
+*My own diagram explaining the mechanism — not an official AWS diagram. Source: AWS Workshop Studio, Lab 4 ("Securing and Observing in Production").*
 
-## Key takeaway
+```mermaid
+flowchart TB
+    subgraph Identity["New in this lab: real login-based security"]
+        direction LR
+        RT[The agent] 
+        GW[The Gateway]
+    end
 
-"It works in my session" and "it remembers this user" are different claims, and the only way to actually know which one you've built is to run all three tests back to back, not just the one that happens to work. Observability isn't something you bolt on later — it's been running since Lab 1.
+    C1["Test 1: same chat, same customer"] -->|remembers| R1["Works automatically<br/>no setup needed"]
+    C2["Test 2: new chat, new customer"] -->|knows nothing| R2["Correctly starts blank"]
+    C3["Test 3: new chat, existing customer"] -->|still remembers| R3["Memory from Lab 2<br/>fills the gap"]
 
-## Tried and tested
+    RT -.recording everything since Lab 1.-> OTEL[Full record of every request]
+    OTEL --> CW[Viewable anytime<br/>in the AWS console]
 
-Ran the three-call sequence (continuity → isolation → memory-bridges-the-gap) myself and got the expected result each time. Pulled a real trace with `agentcore traces get` and read the full span tree — prompt, memory retrieval, Gateway call, model response — for one actual request.
+    style Identity stroke:#dd344c,stroke-width:2px
+    style OTEL stroke:#01a88d,stroke-width:2px
+```
 
-## References
+## The one thing worth remembering
 
-- Lab source: [AWS Workshop Studio — Lab 4: Securing and Observing in Production](https://catalog.us-east-1.prod.workshops.aws/workshops/c770f35f-90a9-4e02-8985-4ef912bddb77/en-US/50-lab4-deploy)
-- [Amazon Bedrock AgentCore Observability docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/observability.html)
-- [Amazon Cognito user pools](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-identity-pools.html)
+"It remembered me in this chat" and "it remembers me when I come back" are two completely different claims, and the only way to know which one you've actually built is to run both tests, not just the one that happens to pass. Also worth knowing: you don't need to "add monitoring later" — it's already there from day one, whether you've looked at it yet or not.
+
+## What I actually tested, not just read about
+
+I ran all three tests myself, back to back, and got the expected result every time. I also pulled a real, detailed record of one actual request and read through exactly what the agent did at each step — what it was asked, what memory it loaded, which tool it called, and what it answered.
+
+## Want the real thing? Go here
+
+- The actual lab, with all the real code: [AWS Workshop Studio — Lab 4: Securing and Observing in Production](https://catalog.us-east-1.prod.workshops.aws/workshops/c770f35f-90a9-4e02-8985-4ef912bddb77/en-US/50-lab4-deploy)
+- [Amazon Bedrock AgentCore Observability — official docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/observability.html)
+- [Amazon Cognito — official docs](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-identity-pools.html) (the login/identity service used here)

@@ -1,38 +1,50 @@
 # Lab 5 — Evaluating Agent Quality
 
-## Problem
+## The problem, in plain terms
 
-The agent is deployed, secured, and observable — but none of that tells you whether it's actually giving good answers, solving customers' problems, or picking the right tools.
+The agent is live, secured, and every request is being recorded. But none of that tells you whether it's actually giving *good* answers.
 
-## If you don't solve this
+## Why this actually matters
 
-"It works" and "it's good" quietly become the same sentence in most teams, because there's no number to separate them. An agent can be online, fast, and traced end to end while still being wrong a third of the time — hallucinating a product ID, picking the wrong tool, or technically answering without actually solving the customer's problem — and nobody notices until complaint volume rises or a customer escalates publicly. By then it's a reputation problem, not an engineering ticket, and there's no historical record of *when* quality started slipping because nobody was measuring it.
+"It's running" and "it's good" quietly turn into the same sentence if nobody's checking. An agent can be fast, online, and fully logged while still being wrong a third of the time — picking the wrong tool, inventing a product that doesn't exist, or technically replying without actually solving the customer's problem. Nobody notices until complaints start piling up or a customer posts about it publicly, and by then it's a reputation problem instead of a quiet bug fix.
 
-## How AWS solves it
+## What AWS gives you to fix this
 
-AgentCore Evaluations runs LLM-as-judge scoring directly against live traffic, using any combination of 13 built-in evaluators (plus custom ones with your own scoring prompt) at a configurable sampling rate. Crucially, it doesn't just output a number — the judge's reasoning is retrievable per interaction, so a low score comes with an explanation pointing at the actual turn that went wrong.
+AgentCore Evaluations uses another AI model as a "judge" to automatically score how the agent is doing on real traffic — not just pass/fail, but with a written explanation for *why* it scored something the way it did. AWS ships 13 ready-made scoring types you can turn on, and you choose what percentage of traffic gets checked.
 
-## Approach
+## What I actually did
 
-1. Configure online evaluation against the deployed agent, choosing which built-in evaluators to run (AgentCore ships 13; this lab uses 3: `GoalSuccessRate`, `Correctness`, `ToolSelectionAccuracy`) and a sampling rate (100% for the workshop, 10–20% suggested for real production traffic).
-2. Deploy the eval config — it starts scoring new interactions automatically from that point on.
-3. Generate varied test traffic on purpose (product queries, return-policy queries, warranty checks, multi-tool questions) so the evaluators have something real to judge.
-4. Run an on-demand evaluation over the last day's traces and read back actual numbers, not vibes.
-5. Drill into *why* a score landed where it did via the verbose per-interaction judge reasoning, not just the aggregate.
+1. Turned on automatic scoring for the live agent, picking 3 of the 13 available checks: did it solve the customer's goal, was the information actually correct, and did it pick the right tool.
+2. Deployed that configuration — scoring starts automatically from that point on.
+3. Sent the agent a batch of varied test questions on purpose, so there was real traffic for the judge to score.
+4. Asked for a report on the last day of activity and got back real numbers, not a guess.
+5. Dug into *why* one score was lower than another, using the judge's written explanation for that specific answer.
 
-## Analysis
+## How it fits together
 
-The sampling-rate decision (100% here vs. 10-20% suggested for production) is a real cost/coverage trade-off worth sitting with rather than copying blindly — 100% sampling is right for a workshop trying to prove the mechanism works, wrong for a cost-sensitive production system where a representative sample tells you the same trend for a fraction of the judge-model spend. The more important shift, though, is going from "quality is a vibe check done occasionally by a human" to "quality is a number tracked continuously by a judge model" — that's the difference between finding a regression in a retro and finding it the day it happened.
+*My own diagram explaining the mechanism — not an official AWS diagram. Source: AWS Workshop Studio, Lab 5 ("Evaluating Agent Quality").*
 
-## Key takeaway
+```mermaid
+flowchart LR
+    T[Real + test traffic] --> E[AgentCore Evaluations<br/>scores a % of every conversation]
+    E --> J["Another AI model acting as judge<br/>gives a score + explains why"]
+    J --> R1["Did it solve the goal?<br/>my result: 73%"]
+    J --> R2["Was it factually correct?<br/>my result: 84%"]
+    J --> R3["Did it pick the right tool?"]
 
-"The demo worked" and "the agent is good" are different questions, and only one of them has a number attached to it in most teams. A judge model that explains *why* it scored a response 0.5 instead of 1.0 — e.g. pointing at a specific invented product ID the user never mentioned — is the difference between a vague sense something's off and an actual root cause you can go fix.
+    style E stroke:#e7157b,stroke-width:2px
+    style J stroke:#e7157b,stroke-width:2px
+```
 
-## Tried and tested
+## The one thing worth remembering
 
-Ran real evaluation against genuine test traffic and got real scores back (around 73% goal success, 84% correctness on my run — exact numbers will vary by traffic). Read the detailed per-interaction judge reasoning via `agentcore logs evals` to see the actual explanation behind a lower score.
+"The demo worked" and "the agent is actually good" are different claims, and most teams only ever check the first one. A judge model that can explain *why* it marked something wrong — for example, pointing out the agent made up a product ID the customer never mentioned — turns a vague feeling that something's off into an actual bug you can go fix.
 
-## References
+## What I actually tested, not just read about
 
-- Lab source: [AWS Workshop Studio — Lab 5: Evaluating Agent Quality](https://catalog.us-east-1.prod.workshops.aws/workshops/c770f35f-90a9-4e02-8985-4ef912bddb77/en-US/60-lab5-evals)
-- [Amazon Bedrock AgentCore Evaluations docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/evaluations.html)
+I ran real test traffic through the live agent and got back real scores (around 73% on "solved the goal" and 84% on "factually correct" for my run — these numbers will vary depending on what traffic you send). I also read the detailed, per-answer explanation behind a lower score to see exactly what went wrong.
+
+## Want the real thing? Go here
+
+- The actual lab, with all the real code: [AWS Workshop Studio — Lab 5: Evaluating Agent Quality](https://catalog.us-east-1.prod.workshops.aws/workshops/c770f35f-90a9-4e02-8985-4ef912bddb77/en-US/60-lab5-evals)
+- [Amazon Bedrock AgentCore Evaluations — official docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/evaluations.html)

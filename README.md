@@ -1,12 +1,12 @@
 # BeSA Cohort 10 — Week 1: Anatomy of an AI Agent
 
 > **This is a personal learning log, not an AWS product or an AWS-endorsed resource.**
-> All credit for the workshop content, lab design, and the AgentCore service itself belongs to **AWS** — specifically the official **"Getting Started with Amazon Bedrock AgentCore"** workshop (`c770f35f-90a9-4e02-8985-4ef912bddb77`) on [AWS Workshop Studio](https://catalog.workshops.aws/). This repo does not reproduce the workshop's code or instructions — it's my own digest of each lab: the problem it solves, the approach, and the one practical takeaway I'd want on hand later.
+> All credit for the workshop content, lab design, and the AgentCore service itself belongs to **AWS** — specifically the official **"Getting Started with Amazon Bedrock AgentCore"** workshop (`c770f35f-90a9-4e02-8985-4ef912bddb77`) on [AWS Workshop Studio](https://catalog.workshops.aws/). This repo does not reproduce the workshop's code or instructions — it's my own write-up of each lab, in plain language, aimed at someone trying this kind of AWS/GenAI work for the first time.
 > **It does not replace the official AWS workshop.** For the actual steps and code, go to the source: [catalog.workshops.aws](https://catalog.workshops.aws/) and the specific lab links in each folder below.
 
-Hands-on build from AWS Workshop Studio's **"Getting Started with Amazon Bedrock AgentCore"**, Labs 1–6 of 9, completed as part of BeSA Cohort 10's Week 1 ("Anatomy of an AI Agent").
+If you're new to building AI agents on AWS, start here. I went through this workshop myself and wrote up each lab the way I wish someone had explained it to me — what the problem actually is, why it matters in the real world, how AWS solves it, and what I actually tried myself (not just read about).
 
-One customer-support agent, built up one capability per lab. Each lab folder goes deeper than this table — problem, real-world cost of not solving it, how AWS solves it, approach, analysis, and a key takeaway:
+One customer-support agent, built up one new ability per lab. Each lab folder goes deeper than this table: the real-world problem, why it matters, how AWS solves it, the steps I took, a diagram, and the one thing worth remembering.
 
 | Lab | What it adds | Real cost of skipping it |
 |---|---|---|
@@ -37,4 +37,4 @@ Recorded and shared by the BeSA Batch 10 volunteer team. Credit for these record
 
 ## How this repo is organized
 
-No source code is reproduced here — the official workshop is the place for that (linked from every lab folder). Each lab folder is a digest meant to be re-read later without redoing the lab: **Problem** (the technical gap), **If you don't solve this** (the real customer/business cost of leaving it unsolved), **How AWS solves it** (the mechanism), **Approach** (the steps taken), **Analysis** (the non-obvious design decision worth remembering), **Key takeaway**, **Tried and tested** (what was actually verified, not just read), and **References** (links to the official lab and the relevant AWS docs).
+No source code is reproduced here — the official workshop is the place for that (linked from every lab folder). Each lab folder follows the same shape, written for a first-timer: **the problem in plain terms**, **why it actually matters** (the real cost of not solving it), **what AWS gives you to fix it**, **what I actually did**, **a diagram of how it fits together**, **the one thing worth remembering**, **what I actually tested**, and **where to go for the real thing**.
