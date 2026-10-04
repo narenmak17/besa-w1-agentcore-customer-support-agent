@@ -21,11 +21,19 @@ Each lab closes exactly one gap the last one opened, in the order production act
 
 **Not covered here:** Labs 7–9 of the full workshop (governing agent actions with policies, zero-code agents via AgentCore Harness, optimizing agent quality) — this repo covers Labs 1–6 only.
 
+## Where this actually applies (not just customer support)
+
+Every lab here is taught through one example — a customer-support agent — because that's how the AWS workshop teaches it. But the six layers are the reusable part, not that one example. A few places the same mechanisms solve a different, real problem:
+
+- **Insurance claims triage** — the **Gateway** pattern from [Lab 3](03-gateway/) is the fit: most insurers run claims/policy logic on decades-old systems nobody's rewriting. Gateway exposes an existing system as a tool without touching its code — same mechanism as this repo's Lambda example, different industry.
+- **Healthcare intake / triage** — the **Identity + Observability** pair from [Lab 4](04-secure-observe/) matters more than the model here: knowing exactly which patient an agent is acting for, with a full trace of every decision, is close to a compliance requirement, not a nice-to-have.
+- **Where NOT to use this** — worth including because it's a real limit: loan eligibility screening on fixed income/credit-score rules belongs in a rule-based decision, not an agent. The original Week 1 material names this exact example. Knowing when *not* to reach for an agent is as much the point as the six layers themselves.
+
 ## About BeSA
 
 [Become a Solutions Architect (BeSA)](https://besa.techexpert.io/) is a free, community-run AWS programme taught by AWS volunteers. Cohort 10's theme was *Agentic AI: PoC to Production on AWS* — 6 weeks, a technical track and a behavioural/facilitation track each week. Week 1's technical session ("Anatomy of an AI Agent") was run by Ashish and Parna, with a fireside chat from Matt Wood (AWS Chief AI & Technology Officer).
 
-Full field note (problem framing, AWS architecture diagrams, slide references) for Week 1: see the companion write-up at [cloudtoailearn.dev](https://cloudtoailearn.dev/) *(link to be added once published)*.
+Full field note for Week 1 (the six-layer theory, slide references, and the industry-application section above in more depth): [linkedin-hub field note](http://127.0.0.1:7600/notes/2026-09-besa-programme/week-1) *(local viewer — a public mirror may follow; this repo is the publicly shareable version of the hands-on content either way)*.
 
 ## Session recordings
 
